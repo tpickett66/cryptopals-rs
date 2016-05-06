@@ -1,0 +1,6 @@
+[package]
+name = "crypto_challenges"
+version = "0.1.0"
+authors = ["Tyler Pickett <t.pickett66@gmail.com>"]
+
+[dependencies]
