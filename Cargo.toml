@@ -4,3 +4,4 @@ version = "0.1.0"
 authors = ["Tyler Pickett <t.pickett66@gmail.com>"]
 
 [dependencies]
+rustc-serialize = ">= 0.3.19, < 0.4"
