@@ -8,15 +8,19 @@ static CIPHERTEXT: &'static str = "1b37373331363f78151b7f2b783431333d78397828372
 
 fn main() {
     let mut candidates = HashMap::new();
-    let keys = (b'a'..b'z'+1).
-        into_iter().
-        chain((b'A'..b'Z'+1));
+    let keys = 0..255;
+
     for key in keys {
         let result = decrypt(key, CIPHERTEXT);
-
-        if is_likely_message(&result) {
-            candidates.insert(key, result.to_string());
+        match result {
+            Ok(val) => {
+                if is_likely_message(&val) {
+                    candidates.insert(key, val.to_string());
+                }
+            },
+            Err(_) => {}
         }
+
     }
 
     println!("Possible Candidates:");

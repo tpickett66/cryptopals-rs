@@ -4,6 +4,8 @@ use self::rustc_serialize::hex::ToHex;
 use self::rustc_serialize::base64::ToBase64;
 use self::rustc_serialize::base64::Config as Base64Config;
 
+use std::string::FromUtf8Error;
+
 pub fn hex_to_base64(input: &str) -> String {
     let config = Base64Config {
         char_set: rustc_serialize::base64::CharacterSet::Standard,
@@ -26,19 +28,22 @@ pub fn fixed_xor(lhs: &str, rhs: &str) -> String {
     result_vec.to_hex()
 }
 
-pub fn xor_cipher_decrypt(key: u8, ciphertext: &str) -> String {
+pub fn xor_cipher_decrypt(key: u8, ciphertext: &str) -> Result<String, FromUtf8Error> {
     let ciphertext_bytes = ciphertext.from_hex().unwrap();
     let result_bytes = ciphertext_bytes.
         into_iter().
         map(|b| b ^ key).
         collect::<Vec<u8>>();
-    String::from_utf8(result_bytes).unwrap()
+    String::from_utf8(result_bytes)
 }
 
+const ETAOIN_SHRDLU: [char; 13] = ['E', 'T', 'A', 'O', 'I', 'N', ' ', 'S', 'H', 'R', 'D', 'L', 'U'];
+
 pub fn is_likely_message(maybe_message: &String) -> bool {
-    let message_chars = maybe_message.chars();
-    let has_control = message_chars.into_iter().any(|c| c.is_control());
-    !has_control
+    let magic_letters = maybe_message.chars().into_iter().
+        filter(|c| ETAOIN_SHRDLU.contains(&c.to_uppercase().next().unwrap())).
+        collect::<Vec<_>>();
+    magic_letters.len() >= 20
 }
 
 #[test]
