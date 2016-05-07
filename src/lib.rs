@@ -26,6 +26,21 @@ pub fn fixed_xor(lhs: &str, rhs: &str) -> String {
     result_vec.to_hex()
 }
 
+pub fn xor_cipher_decrypt(key: u8, ciphertext: &str) -> String {
+    let ciphertext_bytes = ciphertext.from_hex().unwrap();
+    let result_bytes = ciphertext_bytes.
+        into_iter().
+        map(|b| b ^ key).
+        collect::<Vec<u8>>();
+    String::from_utf8(result_bytes).unwrap()
+}
+
+pub fn is_likely_message(maybe_message: &String) -> bool {
+    let message_chars = maybe_message.chars();
+    let has_control = message_chars.into_iter().any(|c| c.is_control());
+    !has_control
+}
+
 #[test]
 fn test_conversion() {
     let hex = "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d";
