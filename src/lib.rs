@@ -46,6 +46,15 @@ pub fn is_likely_message(maybe_message: &String) -> bool {
     magic_letters.len() >= 20
 }
 
+pub fn repeating_xor_cipher_encrypt(key: &str, plaintext: &str) -> String {
+    let key_bytes = key.as_bytes().into_iter();
+    let ciphertext_bytes = plaintext.as_bytes().into_iter().
+        zip(key_bytes.cycle().take(plaintext.len())).
+        map(|bytes| bytes.0 ^ bytes.1).
+        collect::<Vec<u8>>();
+    ciphertext_bytes.to_hex()
+}
+
 #[test]
 fn test_conversion() {
     let hex = "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d";
@@ -59,4 +68,15 @@ fn test_xor() {
     let rhs = "686974207468652062756c6c277320657965";
     let result = fixed_xor(lhs, rhs);
     assert!(result == "746865206b696420646f6e277420706c6179");
+}
+
+#[test]
+fn test_repeating_xor_cipher_encrypt() {
+    let plaintext = "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal";
+    let key = "ICE";
+    let expected_ciphertext = "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f";
+    let ciphertext = repeating_xor_cipher_encrypt(key, plaintext);
+    println!("Expected Ciphertext: {}", expected_ciphertext);
+    println!("         Ciphertext: {}", ciphertext);
+    assert!(ciphertext == expected_ciphertext);
 }
