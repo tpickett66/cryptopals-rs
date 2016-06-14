@@ -1,9 +1,37 @@
+extern crate crypto;
 extern crate rustc_serialize;
+
+use crypto::aes::{KeySize, ecb_decryptor};
+use crypto::blockmodes::NoPadding;
+use crypto::buffer::{BufferResult, ReadBuffer, RefReadBuffer, RefWriteBuffer, WriteBuffer};
+use crypto::symmetriccipher::SymmetricCipherError;
+
 use self::rustc_serialize::hex::FromHex;
 use self::rustc_serialize::hex::ToHex;
 use self::rustc_serialize::base64::Config as Base64Config;
 use self::rustc_serialize::base64::FromBase64;
 use self::rustc_serialize::base64::ToBase64;
+
+pub fn aes_ecb_decrypt(key: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>, SymmetricCipherError> {
+    let mut decryptor = ecb_decryptor(KeySize::KeySize128, key, NoPadding);
+
+    let mut read_buffer = RefReadBuffer::new(ciphertext);
+    let mut plaintext_bytes = Vec::<u8>::new();
+    let mut buffer = [0; 4096];
+    let mut write_buffer = RefWriteBuffer::new(&mut buffer);
+    loop {
+        let result = try!(decryptor.decrypt(&mut read_buffer, &mut write_buffer, true));
+        plaintext_bytes.extend(write_buffer.take_read_buffer()
+                               .take_remaining()
+                               .iter()
+                               .cloned());
+        match result {
+            BufferResult::BufferUnderflow => break,
+            BufferResult::BufferOverflow => {}
+        }
+    }
+    Ok(plaintext_bytes)
+}
 
 pub fn pkcs7_pad(message: &[u8], block_length: u8) -> Vec<u8> {
     let initial_length = message.len() as u8;
@@ -15,7 +43,6 @@ pub fn pkcs7_pad(message: &[u8], block_length: u8) -> Vec<u8> {
     }
     padded_message
 }
-
 
 pub fn hex_to_base64(input: &str) -> String {
     let config = Base64Config {
