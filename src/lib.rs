@@ -5,8 +5,6 @@ use self::rustc_serialize::base64::Config as Base64Config;
 use self::rustc_serialize::base64::FromBase64;
 use self::rustc_serialize::base64::ToBase64;
 
-use std::string::FromUtf8Error;
-
 pub fn pkcs7_pad(message: &[u8], block_length: u8) -> Vec<u8> {
     let initial_length = message.len() as u8;
     let padding = block_length - initial_length.wrapping_rem(block_length);
@@ -34,44 +32,24 @@ pub fn base64_to_hex(input: &str) -> String {
     input.from_base64().unwrap().to_hex()
 }
 
-pub fn fixed_xor(lhs: &str, rhs: &str) -> String {
-    let lhs_bytes = lhs.from_hex().unwrap();
-    let rhs_bytes = rhs.from_hex().unwrap();
-    let result_vec = lhs_bytes.
-        into_iter().
-        zip(rhs_bytes).
+pub fn fixed_xor(lhs: &[u8], rhs: &[u8]) -> Vec<u8> {
+    lhs.iter().
+        zip(rhs).
         map(|a| a.0 ^ a.1).
-        collect::<Vec<_>>();
-    result_vec.to_hex()
+        collect::<Vec<_>>()
 }
 
-pub fn xor_cipher_byte_decrypt(key: u8, ciphertext: &[u8]) -> Vec<u8> {
+pub fn xor_cipher_crypt(key: u8, ciphertext: &[u8]) -> Vec<u8> {
     ciphertext.into_iter().
         map(|b| b ^ key).
         collect::<Vec<u8>>()
 }
 
-pub fn xor_cipher_decrypt(key: u8, ciphertext: &str) -> Result<String, FromUtf8Error> {
-    let ciphertext_bytes = ciphertext.from_hex().unwrap();
-    let result_bytes = xor_cipher_byte_decrypt(key, ciphertext_bytes.as_slice());
-    String::from_utf8(result_bytes)
-}
-
-pub fn repeating_xor_cipher_encrypt(key: &str, plaintext: &str) -> String {
-    let key_bytes = key.as_bytes().into_iter();
-    let ciphertext_bytes = plaintext.as_bytes().into_iter().
-        zip(key_bytes.cycle().take(plaintext.len())).
+pub fn repeating_xor_cipher_crypt(key: &[u8], text: &[u8]) -> Vec<u8> {
+    text.iter().
+        zip(key.iter().cycle().take(text.len())).
         map(|bytes| bytes.0 ^ bytes.1).
-        collect::<Vec<u8>>();
-    ciphertext_bytes.to_hex()
-}
-
-pub fn repeating_xor_cipher_decrypt(key: &[u8], ciphertext: &[u8]) -> Result<String, FromUtf8Error> {
-    let plaintext_bytes = ciphertext.into_iter().
-        zip(key.iter().cycle().take(ciphertext.len())).
-        map(|bytes| bytes.0 ^ bytes.1).
-        collect::<Vec<u8>>();
-    String::from_utf8(plaintext_bytes)
+        collect::<Vec<u8>>()
 }
 
 const ETAOIN_SHRDLU: [char; 13] = ['E', 'T', 'A', 'O', 'I', 'N', ' ', 'S', 'H', 'R', 'D', 'L', 'U'];
@@ -80,10 +58,6 @@ pub fn etaoin_shrdlu_score(scorable: &String) -> usize {
         filter(|c| ETAOIN_SHRDLU.contains(&c.to_uppercase().next().unwrap())).
         collect::<Vec<_>>().
         len()
-}
-
-pub fn is_likely_message(maybe_message: &String) -> bool {
-    etaoin_shrdlu_score(maybe_message) >= 20
 }
 
 pub fn byte_array_hamming_distance(a: &[u8], b: &[u8]) -> u64 {
@@ -134,32 +108,20 @@ mod test {
 
 #[test]
     fn test_xor() {
-        let lhs = "1c0111001f010100061a024b53535009181c";
-        let rhs = "686974207468652062756c6c277320657965";
-        let result = fixed_xor(lhs, rhs);
-        assert!(result == "746865206b696420646f6e277420706c6179");
+        let lhs = "1c0111001f010100061a024b53535009181c".from_hex().unwrap();
+        let rhs = "686974207468652062756c6c277320657965".from_hex().unwrap();
+        let result = fixed_xor(lhs.as_slice(), rhs.as_slice());
+
+        assert!(result == "746865206b696420646f6e277420706c6179".from_hex().unwrap());
     }
 
 #[test]
-    fn test_repeating_xor_cipher_encrypt() {
+    fn test_repeating_xor_cipher_crypt() {
         let plaintext = "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal";
         let key = "ICE";
-        let expected_ciphertext = "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f";
-        let ciphertext = repeating_xor_cipher_encrypt(key, plaintext);
-        println!("Expected Ciphertext: {}", expected_ciphertext);
-        println!("         Ciphertext: {}", ciphertext);
+        let expected_ciphertext = "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f".from_hex().unwrap();
+        let ciphertext = repeating_xor_cipher_crypt(key.as_bytes(), plaintext.as_bytes());
         assert!(ciphertext == expected_ciphertext);
-    }
-
-#[test]
-    fn test_repeating_xor_cipher_decrypt() {
-        let ciphertext = "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f";
-        let key = "ICE";
-        let expected_plaintext = "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal";
-        let plaintext = repeating_xor_cipher_decrypt(key.as_bytes(), ciphertext.from_hex().unwrap().as_slice()).unwrap();
-        println!("Expected plaintext: {}", expected_plaintext);
-        println!("         plaintext: {}", plaintext);
-        assert!(plaintext == expected_plaintext);
     }
 
 #[test]

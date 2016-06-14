@@ -8,8 +8,9 @@ use self::rustc_serialize::base64::FromBase64;
 
 use crypto_challenges::etaoin_shrdlu_score;
 use crypto_challenges::byte_array_hamming_distance;
-use crypto_challenges::xor_cipher_byte_decrypt as decrypt;
-use crypto_challenges::repeating_xor_cipher_decrypt as full_decrypt;
+use crypto_challenges::xor_cipher_crypt;
+use crypto_challenges::repeating_xor_cipher_crypt;
+
 fn main() {
     let mut f = File::open("data/6.txt").unwrap();
     let mut buffer = String::new();
@@ -49,7 +50,7 @@ fn main() {
         let keys = 0..255;
 
         for key in keys {
-            let result = decrypt(key, block.as_slice());
+            let result = xor_cipher_crypt(key, block.as_slice());
             match String::from_utf8(result) {
                 Ok(val) => {
                     key_scores.push((key, etaoin_shrdlu_score(&val)));
@@ -63,6 +64,6 @@ fn main() {
 
     let key = String::from_utf8(key_bytes.clone()).unwrap();
     println!("Probable Key: \"{}\"", key);
-    let plaintext = full_decrypt(key_bytes.as_slice(), ciphertext.as_slice()).unwrap();
-    println!("Plaintext:\n{}", plaintext);
+    let plaintext = repeating_xor_cipher_crypt(key_bytes.as_slice(), ciphertext.as_slice());
+    println!("Plaintext:\n{}", String::from_utf8(plaintext).unwrap());
 }
