@@ -7,6 +7,18 @@ use self::rustc_serialize::base64::ToBase64;
 
 use std::string::FromUtf8Error;
 
+pub fn pkcs7_pad(message: &[u8], block_length: u8) -> Vec<u8> {
+    let initial_length = message.len() as u8;
+    let padding = block_length - initial_length.wrapping_rem(block_length);
+    let mut padded_message = Vec::with_capacity(block_length as usize);
+    padded_message.extend_from_slice(message);
+    for _ in 0..padding {
+        padded_message.push(padding);
+    }
+    padded_message
+}
+
+
 pub fn hex_to_base64(input: &str) -> String {
     let config = Base64Config {
         char_set: rustc_serialize::base64::CharacterSet::Standard,
@@ -93,62 +105,76 @@ pub fn hex_hamming_distance(a: &str, b: &str) -> u64 {
     )
 }
 
-#[test]
-fn test_hex_to_base64_conversion() {
-    let hex = "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d";
-    let base64 = hex_to_base64(hex);
-    assert!(base64 == "SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t");
-}
+mod test {
+    extern crate rustc_serialize;
+
+    use super::*;
+    use self::rustc_serialize::hex::FromHex;
 
 #[test]
-fn test_base64_to_hex_conversion() {
-    let base64 = "SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t";
-    let hex = base64_to_hex(base64);
-    assert!(hex == "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d");
-}
+    fn test_pkcs7_pad() {
+        let message = "YELLOW SUBMARINE".as_bytes();
+        let padded_message = pkcs7_pad(message, 20);
+        assert_eq!(padded_message, "YELLOW SUBMARINE\x04\x04\x04\x04".as_bytes());
+    }
 
 #[test]
-fn test_xor() {
-    let lhs = "1c0111001f010100061a024b53535009181c";
-    let rhs = "686974207468652062756c6c277320657965";
-    let result = fixed_xor(lhs, rhs);
-    assert!(result == "746865206b696420646f6e277420706c6179");
-}
+    fn test_hex_to_base64_conversion() {
+        let hex = "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d";
+        let base64 = hex_to_base64(hex);
+        assert!(base64 == "SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t");
+    }
 
 #[test]
-fn test_repeating_xor_cipher_encrypt() {
-    let plaintext = "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal";
-    let key = "ICE";
-    let expected_ciphertext = "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f";
-    let ciphertext = repeating_xor_cipher_encrypt(key, plaintext);
-    println!("Expected Ciphertext: {}", expected_ciphertext);
-    println!("         Ciphertext: {}", ciphertext);
-    assert!(ciphertext == expected_ciphertext);
-}
+    fn test_base64_to_hex_conversion() {
+        let base64 = "SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t";
+        let hex = base64_to_hex(base64);
+        assert!(hex == "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d");
+    }
 
 #[test]
-fn test_repeating_xor_cipher_decrypt() {
-    let ciphertext = "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f";
-    let key = "ICE";
-    let expected_plaintext = "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal";
-    let plaintext = repeating_xor_cipher_decrypt(key.as_bytes(), ciphertext.from_hex().unwrap().as_slice()).unwrap();
-    println!("Expected plaintext: {}", expected_plaintext);
-    println!("         plaintext: {}", plaintext);
-    assert!(plaintext == expected_plaintext);
-}
+    fn test_xor() {
+        let lhs = "1c0111001f010100061a024b53535009181c";
+        let rhs = "686974207468652062756c6c277320657965";
+        let result = fixed_xor(lhs, rhs);
+        assert!(result == "746865206b696420646f6e277420706c6179");
+    }
 
 #[test]
-fn test_hamming() {
-    let a = "this is a test";
-    let b = "wokka wokka!!!";
-    let distance = hamming_distance(a, b);
-    assert_eq!(37, distance);
-}
+    fn test_repeating_xor_cipher_encrypt() {
+        let plaintext = "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal";
+        let key = "ICE";
+        let expected_ciphertext = "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f";
+        let ciphertext = repeating_xor_cipher_encrypt(key, plaintext);
+        println!("Expected Ciphertext: {}", expected_ciphertext);
+        println!("         Ciphertext: {}", ciphertext);
+        assert!(ciphertext == expected_ciphertext);
+    }
 
 #[test]
-fn test_hex_hamming() {
-    let a = "3749521a010715114f104f211a632d1f0c4e084e5848264f030a491c0b";
-    let b = "78453102040b411b01522a0856413b521d060654540e104e0516491e10";
-    let distance = hex_hamming_distance(a, b);
-    assert_eq!(77, distance);
+    fn test_repeating_xor_cipher_decrypt() {
+        let ciphertext = "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f";
+        let key = "ICE";
+        let expected_plaintext = "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal";
+        let plaintext = repeating_xor_cipher_decrypt(key.as_bytes(), ciphertext.from_hex().unwrap().as_slice()).unwrap();
+        println!("Expected plaintext: {}", expected_plaintext);
+        println!("         plaintext: {}", plaintext);
+        assert!(plaintext == expected_plaintext);
+    }
+
+#[test]
+    fn test_hamming() {
+        let a = "this is a test";
+        let b = "wokka wokka!!!";
+        let distance = hamming_distance(a, b);
+        assert_eq!(37, distance);
+    }
+
+#[test]
+    fn test_hex_hamming() {
+        let a = "3749521a010715114f104f211a632d1f0c4e084e5848264f030a491c0b";
+        let b = "78453102040b411b01522a0856413b521d060654540e104e0516491e10";
+        let distance = hex_hamming_distance(a, b);
+        assert_eq!(77, distance);
+    }
 }
