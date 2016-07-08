@@ -1,4 +1,5 @@
 extern crate crypto;
+extern crate rand;
 extern crate rustc_serialize;
 
 use std::collections::HashMap;
@@ -7,6 +8,11 @@ use crypto::aes::{KeySize, ecb_encryptor, ecb_decryptor};
 use crypto::blockmodes::NoPadding;
 use crypto::buffer::{BufferResult, ReadBuffer, RefReadBuffer, RefWriteBuffer, WriteBuffer};
 use crypto::symmetriccipher::SymmetricCipherError;
+
+// We're allowing this 'unused import' because we're actually using OsRng behind
+// the secenes.
+#[allow(unused_imports)]
+use rand::{thread_rng, OsRng, Rng};
 
 use self::rustc_serialize::hex::FromHex;
 use self::rustc_serialize::hex::ToHex;
@@ -112,6 +118,23 @@ pub fn pkcs7_pad(message: &[u8], block_length: u8) -> Vec<u8> {
         padded_message.push(padding);
     }
     padded_message
+}
+
+pub fn random_encrypt(plaintext: &str) -> Result<Vec<u8>, SymmetricCipherError> {
+    let mut rng = thread_rng();
+    let use_ecb: bool = rng.gen();
+    let padding_size = rng.gen_range(5, 10);
+    let random_padding: String = rng.gen_ascii_chars().take(padding_size).collect::<String>();
+    let padded_plaintext = pkcs7_pad([random_padding.as_str(), plaintext, random_padding.as_str()].join("").as_bytes(), 16);
+    let key = rng.gen_iter::<u8>().take(16).collect::<Vec<u8>>();
+    if use_ecb {
+        println!("Using ECB!");
+        aes_ecb_encrypt(key.as_slice(), padded_plaintext.as_slice())
+    } else {
+        println!("Using CBC!");
+        let iv = rng.gen_iter::<u8>().take(16).collect::<Vec<u8>>();
+        aes_cbc_encrypt(key.as_slice(), iv.as_slice(), padded_plaintext.as_slice())
+    }
 }
 
 pub fn hex_to_base64(input: &str) -> String {

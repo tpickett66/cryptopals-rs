@@ -4,5 +4,6 @@ version = "0.1.0"
 authors = ["Tyler Pickett <t.pickett66@gmail.com>"]
 
 [dependencies]
+rand = ">= 0.3, < 0.4"
 rustc-serialize = ">= 0.3.19, < 0.4"
 rust-crypto = ">= 0.2.36, < 0.3"
