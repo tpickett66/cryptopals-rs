@@ -1,6 +1,8 @@
 extern crate crypto;
 extern crate rustc_serialize;
 
+use std::collections::HashMap;
+
 use crypto::aes::{KeySize, ecb_encryptor, ecb_decryptor};
 use crypto::blockmodes::NoPadding;
 use crypto::buffer::{BufferResult, ReadBuffer, RefReadBuffer, RefWriteBuffer, WriteBuffer};
@@ -90,6 +92,15 @@ pub fn aes_ecb_decrypt(key: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>, Symmetr
         }
     }
     Ok(plaintext_bytes)
+}
+
+pub fn detect_aes_ecb(ciphertext: &Vec<u8>) -> bool {
+    let mut map = HashMap::new();
+    for chunk in ciphertext.chunks(16) {
+        let count = map.entry(chunk).or_insert(0);
+        *count += 1;
+    }
+    map.values().any(|&val| val > 1)
 }
 
 pub fn pkcs7_pad(message: &[u8], block_length: u8) -> Vec<u8> {
@@ -200,6 +211,14 @@ mod tests {
         let expected_plaintext = "This is my sekret value, there are many like it, but this one is mine!\x0A\x0A\x0A\x0A\x0A\x0A\x0A\x0A\x0A\x0A";
         let plaintext = aes_ecb_decrypt(key.as_bytes(), ciphertext.as_slice()).unwrap();
         assert_eq!(expected_plaintext.as_bytes(), plaintext.as_slice());
+    }
+
+
+    #[test]
+    fn test_detect_aes_ecb() {
+        let ciphertext = "d880619740a8a19b7840a8a31c810a3d08649af70dc06f4fd5d2d69c744cd283e2dd052f6b641dbf9d11b0348542bb5708649af70dc06f4fd5d2d69c744cd2839475c9dfdbc1d46597949d9c7e82bf5a08649af70dc06f4fd5d2d69c744cd28397a93eab8d6aecd566489154789a6b0308649af70dc06f4fd5d2d69c744cd283d403180c98c8f6db1f2a3f9c4040deb0ab51b29933f2c123c58386b06fba186a";
+        let bytes = ciphertext.from_hex().unwrap();
+        assert!(detect_aes_ecb(&bytes));
     }
 
     #[test]

@@ -1,10 +1,11 @@
 extern crate rustc_serialize;
+extern crate crypto_challenges;
 
 use std::fs::File;
 use std::io::prelude::*;
 use std::collections::HashMap;
 use self::rustc_serialize::hex::FromHex;
-
+use crypto_challenges::detect_aes_ecb;
 
 fn main() {
     let mut f = File::open("data/8.txt").unwrap();
@@ -14,12 +15,7 @@ fn main() {
     let mut candidates = HashMap::new();
     for (line_number, line) in file_buffer.lines().enumerate() {
         let bytes = line.from_hex().unwrap();
-        let mut map = HashMap::new();
-        for chunk in bytes.chunks(16) {
-            let count = map.entry(chunk).or_insert(0);
-            *count += 1;
-        }
-        if map.values().any(|&val| val > 1) {
+        if detect_aes_ecb(&bytes) {
             candidates.insert(line_number, line);
         }
     }
