@@ -20,6 +20,8 @@ use self::rustc_serialize::base64::Config as Base64Config;
 use self::rustc_serialize::base64::FromBase64;
 use self::rustc_serialize::base64::ToBase64;
 
+pub mod query_string;
+
 pub fn aes_cbc_encrypt(key: &[u8], iv: &[u8], plaintext: &[u8]) -> Result<Vec<u8>, SymmetricCipherError> {
     let mut previous = iv.to_vec();
     let mut ciphertext: Vec<u8> = vec![];
