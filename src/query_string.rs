@@ -5,7 +5,7 @@ pub fn decode(input: &str) -> BTreeMap<&str, &str> {
     let mut result: BTreeMap<&str, &str> = BTreeMap::new();
 
     for pair in pairs {
-        result.insert(pair[0], pair[1]);
+        result.insert(pair[0], pair[1].trim());
     }
     result
 }

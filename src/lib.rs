@@ -60,6 +60,10 @@ pub fn aes_cbc_decrypt(key: &[u8], iv: &[u8], ciphertext: &[u8]) -> Result<Vec<u
     Ok(plaintext_bytes)
 }
 
+pub fn padded_ecb_encrypt(key: &[u8], plaintext: &[u8]) -> Result<Vec<u8>, SymmetricCipherError> {
+    aes_ecb_encrypt(key, pkcs7_pad(plaintext, 16).as_slice())
+}
+
 pub fn aes_ecb_encrypt(key: &[u8], plaintext: &[u8]) -> Result<Vec<u8>, SymmetricCipherError> {
     let mut encryptor = ecb_encryptor(KeySize::KeySize128, key, NoPadding);
 
